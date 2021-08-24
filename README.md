@@ -1,4 +1,5 @@
 # SudokuSolver
+[![CI](https://github.com/guo-yong-zhi/SudokuSolver.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/guo-yong-zhi/SudokuSolver.jl/actions/workflows/ci.yml) [![CI-nightly](https://github.com/guo-yong-zhi/SudokuSolver.jl/actions/workflows/ci-nightly.yml/badge.svg)](https://github.com/guo-yong-zhi/SudokuSolver.jl/actions/workflows/ci-nightly.yml) [![codecov](https://codecov.io/gh/guo-yong-zhi/SudokuSolver.jl/branch/main/graph/badge.svg?token=43TOrL25V7)](https://codecov.io/gh/guo-yong-zhi/SudokuSolver.jl)  
 This is a simple and pure sudoku puzzle solver with no other dependencies except the julia standard libraries. The package exports only one function, `solvesudoku`.
 ## Usage
 The `solvesudoku` function takes a 9×9 integer matrix or a string as input. In the integer matrix, blank is represented by the number `0`. In the string, blank is represented by the character '`0`', '`-`', '`.`' or '`_`'. And invisible characters in the string, such as '\n', are ignored. Some sample puzzles can be found in `SudokuSolver.PuzzleExamples`. The function return the solved Sudoku puzzle as a 9×9 integer matrix.
