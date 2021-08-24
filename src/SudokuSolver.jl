@@ -1,5 +1,8 @@
 module SudokuSolver
 
-# Write your package code here.
+export solvesudoku
 
+include("heap.jl")
+include("sudoku.jl")
+include("puzzleexamples.jl")
 end
