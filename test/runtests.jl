@@ -7,4 +7,5 @@ using Test
     @test solvesudoku(SudokuSolver.PuzzleExamples[6]) == s6ans
     @test solvesudoku(SudokuSolver.PuzzleExamples[6], solver=SudokuSolver.presortsolver) == s6ans
     @test solvesudoku(SudokuSolver.PuzzleExamples[6], solver=SudokuSolver.naivesolver) == s6ans
+    @test solvesudoku("000011054800000000000000000650400000000002730000000000210000800700000300000350000") === nothing
 end

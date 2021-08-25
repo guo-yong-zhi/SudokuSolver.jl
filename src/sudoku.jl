@@ -120,10 +120,11 @@ function sudokudfs(P::AbstractArray{T,3}, id=1) where T
     end
     return false
 end
-function naivesolver(b, P::AbstractArray{T,3}=zeros(Int, 9, 9, 9)) where T
+function naivesolver(b, P::AbstractArray{T,3}=zeros(Int, 9, 9, 9); check=true) where T
     possinit!(P, b)
-    sudokudfs(P)
-    reshape(mapslices(argmin, P, dims=3), 9, 9)
+    valid = sudokudfs(P)
+    ans = reshape(mapslices(argmin, P, dims=3), 9, 9)
+    return check ? (valid ? ans : nothing) : ans
 end
 
 # 预先排序（一条龙）
@@ -157,11 +158,12 @@ function sudokudfs(P::AbstractArray{T,3}, idmap::AbstractVector, id=1) where T
     return false
 end
     
-function presortsolver(b, P::AbstractArray{T,3}=zeros(Int, 9, 9, 9)) where T
+function presortsolver(b, P::AbstractArray{T,3}=zeros(Int, 9, 9, 9); check=true) where T
     possinit!(P, b)
     ids = presort(P)
-    sudokudfs(P, ids)
-    reshape(mapslices(argmin, P, dims=3), 9, 9)
+    valid = sudokudfs(P, ids)
+    ans = reshape(mapslices(argmin, P, dims=3), 9, 9)
+    return check ? (valid ? ans : nothing) : ans
 end
 
 # 优先深搜
@@ -280,13 +282,14 @@ function sudokudfs(P::AbstractArray{T,3}, H::tracHeap, id=last(heapextractmin!(H
     end
     return false
 end
-function prioritysolver(b, P::AbstractArray{T,3}=zeros(Int, 9, 9, 9)) where T
+function prioritysolver(b, P::AbstractArray{T,3}=zeros(Int, 9, 9, 9); check=true) where T
     possinit!(P, b)
     H = heapinit!(P)
-    sudokudfs(P, H)
-    reshape(mapslices(argmin, P, dims=3), 9, 9)
+    valid = sudokudfs(P, H)
+    ans = reshape(mapslices(argmin, P, dims=3), 9, 9)
+    return check ? (valid ? ans : nothing) : ans
 end
-function solvesudoku(sudoku::Matrix{<:Integer}, args...; solver=prioritysolver)
-    solver(sudoku, args...)
+function solvesudoku(sudoku::Matrix{<:Integer}, args...; solver=prioritysolver, kargs...)
+    solver(sudoku, args...; kargs...)
 end
 solvesudoku(sudoku::AbstractString, args...; kargs...) = solvesudoku(loadpuzzle(sudoku), args...; kargs...)
