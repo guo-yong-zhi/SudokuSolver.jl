@@ -20,7 +20,29 @@ function possinit!(P::Matrix{UInt16}, grid::Matrix)
         end
     end
 end
-
+function intlog2(v)
+    if v == 1 << 4
+        return 4
+    elseif v < 1 << 4
+        if v == 1 << 2
+            return 2
+        elseif v > 1 << 2
+            return 3
+        else
+            return v - 1
+        end
+    else
+        if v == 1 << 7
+            return 7
+        elseif v > 1 << 7
+            return 8
+        elseif v < 1 << 6
+            return 5
+        else
+            return 6            
+        end
+    end
+end
 # 朴素深搜（顺序搜索，逐列）
 function sudokudfs!(grid::Matrix, P::Matrix{UInt16}=zeros(UInt16, 3, 9), id=1)
     if id == 82
@@ -31,25 +53,25 @@ function sudokudfs!(grid::Matrix, P::Matrix{UInt16}=zeros(UInt16, 3, 9), id=1)
     p = (r - 1) ÷ 3 * 3 + (c - 1) ÷ 3 + 1
     if grid[r, c] == 0
         mask = P[1, r] | P[2, c] | P[3, p]
-        for v in 1:9
-            bm = 1<<(v-1)
-            if mask & bm == 0
-                P[1, r] |= bm
-                P[2, c] |= bm
-                P[3, p] |= bm
-                if sudokudfs!(grid, P, id + 1)
-                    grid[r, c] = v
-                    return true
-                end
-                P[1, r] &= ~bm
-                P[2, c] &= ~bm
-                P[3, p] &= ~bm
+        while mask < 1 << 9 - 1
+            mask2 = mask | (mask+1)
+            bm = mask2 - mask
+            P[1, r] |= bm
+            P[2, c] |= bm
+            P[3, p] |= bm
+            if sudokudfs!(grid, P, id + 1)
+                grid[r, c] = intlog2(bm) + 1
+                return true
             end
+            P[1, r] &= ~bm
+            P[2, c] &= ~bm
+            P[3, p] &= ~bm
+            mask = mask2
         end
+        return false
     else
         return sudokudfs!(grid, P, id + 1)
     end
-    return false
 end
 function naivesolver!(grid, P::Matrix{UInt16}=zeros(UInt16, 3, 9); check=true)
     possinit!(P, grid)
@@ -68,25 +90,26 @@ function sudokudfs!(grid::Matrix{<:Integer}, P::Matrix{UInt16}, order::Vector, i
     p = (r - 1) ÷ 3 * 3 + (c - 1) ÷ 3 + 1
     if grid[r, c] == 0
         mask = P[1, r] | P[2, c] | P[3, p]
-        for v in 1:9
-            bm = 1<<(v-1)
-            if mask & bm == 0
-                P[1, r] |= bm
-                P[2, c] |= bm
-                P[3, p] |= bm
-                if sudokudfs!(grid, P, order, id + 1)
-                    grid[r, c] = v
-                    return true
-                end
-                P[1, r] &= ~bm
-                P[2, c] &= ~bm
-                P[3, p] &= ~bm
+        while mask < 1 << 9 - 1
+            mask2 = mask | (mask+1)
+            bm = mask2 - mask
+            P[1, r] |= bm
+            P[2, c] |= bm
+            P[3, p] |= bm
+            if sudokudfs!(grid, P, id + 1)
+                grid[r, c] = intlog2(bm) + 1
+                return true
             end
+            P[1, r] &= ~bm
+            P[2, c] &= ~bm
+            P[3, p] &= ~bm
+            mask = mask2
         end
+        return false
     else
-        return sudokudfs!(grid, P, order, id + 1)
+        return sudokudfs!(grid, P, id + 1)
     end
-    return false
+    
 end
 function presort()
     ids = [[1:9...], [9:-1:1...],[1:9...], [9:-1:1...],

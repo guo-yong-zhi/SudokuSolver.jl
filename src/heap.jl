@@ -62,11 +62,11 @@ function heapchangekey!(L::AbstractVector{T}, i::Int, v::T, oldkey) where T
     if first(v) == oldkey
         nothing
     elseif first(v) < oldkey
-            L[i] = v
-            heapdecreasekey!(L, i)
-        else
-            L[i] = v
-            minheapify!(L, i)
+        L[i] = v
+        heapdecreasekey!(L, i)
+    else
+        L[i] = v
+        minheapify!(L, i)
     end
 end
             
@@ -175,7 +175,7 @@ function undo!(L::tracHeap, nsteps::Int)
         if e == (-1, -1)
             L.heap.unused -= 1
         else
-    exchange!(L.locL, last(L.heap[e[1]]), last(L.heap[e[2]]))
+            exchange!(L.locL, last(L.heap[e[1]]), last(L.heap[e[2]]))
             exchange!(L.heap.vector, e...)
         end
     end
