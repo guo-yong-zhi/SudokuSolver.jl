@@ -1,2 +1,5 @@
 /Manifest.toml
 .vscode
+statprof
+.ipynb_checkpoints
+*.ipynb

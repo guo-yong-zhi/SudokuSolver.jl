@@ -3,40 +3,104 @@ function loadpuzzle(s::String)
     s = map(c -> c in "-._" ? 0 : parse(Int, c), s |> collect)
     reshape(s, 9, 9) |> permutedims
 end
-loadpuzzle(mat::Matrix{<:Integer}) = mat
-# function traversalrela(f, r::Int, c::Int)
-#     for i in 1:c-1
-#         f(r, i)
-#     end
-#     for i in c+1:9
-#         f(r, i)
-#     end
-#     for i in 1:r-1
-#         f(i, c)
-#     end
-#     for i in r+1:9
-#         f(i, c)
-#     end
-#     rr = (r-1) % 3 + 1
-#     rc = (c-1) % 3 + 1
-#     s = ((1, 2), (-1, 1), (-2, -1))
-#     for i in s[rr]        
-#         for j in s[rc]
-#             f(r+i, c+j)
-#         end
-#     end
-# end
-# function hold!(P::AbstractArray{T, 3}, r, c, v) where T
-#     traversalrela(r, c) do i, j
-#         P[i, j, v] += 1
-#     end
-# end
-# function release!(P::AbstractArray{T, 3}, r, c, v) where T
-#     traversalrela(r, c) do i, j
-#         P[i, j, v] -= 1
-#     end
-# end
+loadpuzzle(mat::Matrix{<:Integer}) = copy(mat)
+function possinit!(P::Matrix{UInt16}, grid::Matrix)
+    P .= 0
+    for r in 1:9
+        for c in 1:9
+            p = (r - 1) ÷ 3 * 3 + (c - 1) ÷ 3 + 1
+            v = grid[r, c]
+            @assert 0 <= v <= 9
+            if v > 0
+                bm = 1 << (v-1)
+                P[1, r] |= bm
+                P[2, c] |= bm
+                P[3, p] |= bm
+            end
+        end
+    end
+end
 
+# 朴素深搜（顺序搜索，逐列）
+function sudokudfs!(grid::Matrix, P::Matrix{UInt16}=zeros(UInt16, 3, 9), id=1)
+    if id == 82
+        return true
+    end
+    r = (id - 1) % 9 + 1
+    c = (id - 1) ÷ 9 + 1
+    p = (r - 1) ÷ 3 * 3 + (c - 1) ÷ 3 + 1
+    if grid[r, c] == 0
+        mask = P[1, r] | P[2, c] | P[3, p]
+        for v in 1:9
+            bm = 1<<(v-1)
+            if mask & bm == 0
+                P[1, r] |= bm
+                P[2, c] |= bm
+                P[3, p] |= bm
+                if sudokudfs!(grid, P, id + 1)
+                    grid[r, c] = v
+                    return true
+                end
+                P[1, r] &= ~bm
+                P[2, c] &= ~bm
+                P[3, p] &= ~bm
+            end
+        end
+    else
+        return sudokudfs!(grid, P, id + 1)
+    end
+    return false
+end
+function naivesolver!(grid, P::Matrix{UInt16}=zeros(UInt16, 3, 9); check=true)
+    possinit!(P, grid)
+    valid = sudokudfs!(grid, P)
+    return check ? (valid ? grid : nothing) : grid
+end
+
+# 预排序
+function sudokudfs!(grid::Matrix{<:Integer}, P::Matrix{UInt16}, order::Vector, id=1)
+    if id == 82
+        return true
+    end
+    id2 = order[id]
+    r = (id2 - 1) % 9 + 1
+    c = (id2 - 1) ÷ 9 + 1
+    p = (r - 1) ÷ 3 * 3 + (c - 1) ÷ 3 + 1
+    if grid[r, c] == 0
+        mask = P[1, r] | P[2, c] | P[3, p]
+        for v in 1:9
+            bm = 1<<(v-1)
+            if mask & bm == 0
+                P[1, r] |= bm
+                P[2, c] |= bm
+                P[3, p] |= bm
+                if sudokudfs!(grid, P, order, id + 1)
+                    grid[r, c] = v
+                    return true
+                end
+                P[1, r] &= ~bm
+                P[2, c] &= ~bm
+                P[3, p] &= ~bm
+            end
+        end
+    else
+        return sudokudfs!(grid, P, order, id + 1)
+    end
+    return false
+end
+function presort()
+    ids = [[1:9...], [9:-1:1...],[1:9...], [9:-1:1...],
+    [1:9...], [9:-1:1...],[1:9...], [9:-1:1...],[1:9...]]# 一条龙序
+    ids = vcat(broadcast((a, b) -> a .+ b, ids, 0:9:72)...)
+end
+const ORDER = presort()
+function presortedsolver!(grid, P::Matrix{UInt16}=zeros(UInt16, 3, 9), order=ORDER; check=true)
+    possinit!(P, grid)
+    valid = sudokudfs!(grid, P, order)
+    return check ? (valid ? grid : nothing) : grid
+end
+
+# 优先深搜
 function possinit!(P::AbstractArray{T,3}, b::AbstractArray{W,2}) where {T,W}
     P .= 0
     for r in 1:9
@@ -94,79 +158,6 @@ function release!(P::AbstractArray{T,3}, r, c, v) where T
         end
     end
 end
-
-# 朴素深搜（顺序搜索，逐列）
-function sudokudfs(P::AbstractArray{T,3}, id=1) where T
-    r = (id - 1) % 9 + 1
-    c = (id - 1) ÷ 9 + 1
-    if id == 81
-        for v in 1:9
-            if P[r, c, v] == 0
-                return true
-            end
-        end
-        return false
-    end
-    
-    for v in 1:9
-        if P[r, c, v] == 0
-#             @show v
-            hold!(P, r, c, v)
-            if sudokudfs(P, id + 1)
-                return true
-            end
-            release!(P, r, c, v)
-        end
-    end
-    return false
-end
-function naivesolver(b, P::AbstractArray{T,3}=zeros(Int, 9, 9, 9); check=true) where T
-    possinit!(P, b)
-    valid = sudokudfs(P)
-    ans = reshape(mapslices(argmin, P, dims=3), 9, 9)
-    return check ? (valid ? ans : nothing) : ans
-end
-
-# 预先排序（一条龙）
-function presort(P) 
-    ids = [[1:9...], [9:-1:1...],[1:9...], [9:-1:1...],
-    [1:9...], [9:-1:1...],[1:9...], [9:-1:1...],[1:9...]]# 一条龙序
-    ids = vcat(broadcast((a, b) -> a .+ b, ids, 0:9:72)...)
-end
-
-function sudokudfs(P::AbstractArray{T,3}, idmap::AbstractVector, id=1) where T
-    r = (idmap[id] - 1) % 9 + 1
-    c = (idmap[id] - 1) ÷ 9 + 1
-    if id == 81
-        for v in 1:9
-            if P[r, c, v] == 0
-                return true
-            end
-        end
-        return false
-    end
-    
-    for v in 1:9
-        if P[r, c, v] == 0
-            hold!(P, r, c, v)
-            if sudokudfs(P, idmap, id + 1)
-                return true
-            end
-            release!(P, r, c, v)
-        end
-    end
-    return false
-end
-    
-function presortsolver(b, P::AbstractArray{T,3}=zeros(Int, 9, 9, 9); check=true) where T
-    possinit!(P, b)
-    ids = presort(P)
-    valid = sudokudfs(P, ids)
-    ans = reshape(mapslices(argmin, P, dims=3), 9, 9)
-    return check ? (valid ? ans : nothing) : ans
-end
-
-# 优先深搜
 mutable struct KVpair{KT,VT}
     key::KT
     value::VT
