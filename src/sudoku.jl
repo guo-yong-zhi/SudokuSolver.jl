@@ -79,7 +79,7 @@ function naivesolver!(grid, P::Matrix{UInt16}=zeros(UInt16, 3, 9); check=true)
     return check ? (valid ? grid : nothing) : grid
 end
 
-# 预排序
+# 重排搜索顺序
 function sudokudfs!(grid::Matrix{<:Integer}, P::Matrix{UInt16}, order::Vector, id=1)
     if id == 82
         return true
@@ -117,7 +117,7 @@ function presort()
     ids = vcat(broadcast((a, b) -> a .+ b, ids, 0:9:72)...)
 end
 const ORDER = presort()
-function presortedsolver!(grid, P::Matrix{UInt16}=zeros(UInt16, 3, 9), order=ORDER; check=true)
+function reordersolver!(grid, P::Matrix{UInt16}=zeros(UInt16, 3, 9), order=ORDER; check=true)
     possinit!(P, grid)
     valid = sudokudfs!(grid, P, order)
     return check ? (valid ? grid : nothing) : grid
@@ -268,7 +268,7 @@ function release!(P::AbstractArray{T,3}, r, c, v, H::tracHeap) where T
         end
     end
 end
-function sudokudfs(P::AbstractArray{T,3}, H::tracHeap, id=last(heapextractmin!(H))) where T
+function sudokudfs!(P::AbstractArray{T,3}, H::tracHeap, id=last(heapextractmin!(H))) where T
     r = (id - 1) % 9 + 1
     c = (id - 1) ÷ 9 + 1 
     if length(H) == 0
@@ -285,7 +285,7 @@ function sudokudfs(P::AbstractArray{T,3}, H::tracHeap, id=last(heapextractmin!(H
             hold!(P, r, c, v, H)
             snapshot2 = historylen(H)
             id = last(heapextractmin!(H))
-            if sudokudfs(P, H, id)
+            if sudokudfs!(P, H, id)
 #                 @show id
                 return true
             end
@@ -296,14 +296,14 @@ function sudokudfs(P::AbstractArray{T,3}, H::tracHeap, id=last(heapextractmin!(H
     end
     return false
 end
-function prioritysolver(b, P::AbstractArray{T,3}=zeros(Int, 9, 9, 9); check=true) where T
+function prioritysolver!(b, P::AbstractArray{T,3}=zeros(Int, 9, 9, 9); check=true) where T
     possinit!(P, b)
     H = heapinit!(P)
-    valid = sudokudfs(P, H)
+    valid = sudokudfs!(P, H)
     ans = reshape(mapslices(argmin, P, dims=3), 9, 9)
     return check ? (valid ? ans : nothing) : ans
 end
-function solvesudoku(sudoku::Matrix{<:Integer}, args...; solver=prioritysolver, kargs...)
+function solvesudoku!(sudoku::Matrix{<:Integer}, args...; solver=naivesolver!, kargs...)
     solver(sudoku, args...; kargs...)
 end
-solvesudoku(sudoku::AbstractString, args...; kargs...) = solvesudoku(loadpuzzle(sudoku), args...; kargs...)
+solvesudoku(sudoku, args...; kargs...) = solvesudoku!(loadpuzzle(sudoku), args...; kargs...)
