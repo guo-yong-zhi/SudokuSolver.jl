@@ -52,20 +52,20 @@ function sudokudfs!(grid::Matrix, P::Matrix{UInt16}=zeros(UInt16, 3, 9), id=1)
     c = (id - 1) ÷ 9 + 1
     p = (r - 1) ÷ 3 * 3 + (c - 1) ÷ 3 + 1
     if grid[r, c] == 0
-        mask = P[1, r] | P[2, c] | P[3, p]
+        @inbounds mask = P[1, r] | P[2, c] | P[3, p]
         while mask < 1 << 9 - 1
             mask2 = mask | (mask+1)
             bm = mask2 - mask
-            P[1, r] |= bm
-            P[2, c] |= bm
-            P[3, p] |= bm
+            @inbounds P[1, r] |= bm
+            @inbounds P[2, c] |= bm
+            @inbounds P[3, p] |= bm
             if sudokudfs!(grid, P, id + 1)
                 grid[r, c] = intlog2(bm) + 1
                 return true
             end
-            P[1, r] &= ~bm
-            P[2, c] &= ~bm
-            P[3, p] &= ~bm
+            @inbounds P[1, r] &= ~bm
+            @inbounds P[2, c] &= ~bm
+            @inbounds P[3, p] &= ~bm
             mask = mask2
         end
         return false
@@ -89,20 +89,20 @@ function sudokudfs!(grid::Matrix{<:Integer}, P::Matrix{UInt16}, order::Vector, i
     c = (id2 - 1) ÷ 9 + 1
     p = (r - 1) ÷ 3 * 3 + (c - 1) ÷ 3 + 1
     if grid[r, c] == 0
-        mask = P[1, r] | P[2, c] | P[3, p]
+        @inbounds mask = P[1, r] | P[2, c] | P[3, p]
         while mask < 1 << 9 - 1
             mask2 = mask | (mask+1)
             bm = mask2 - mask
-            P[1, r] |= bm
-            P[2, c] |= bm
-            P[3, p] |= bm
+            @inbounds P[1, r] |= bm
+            @inbounds P[2, c] |= bm
+            @inbounds P[3, p] |= bm
             if sudokudfs!(grid, P, id + 1)
                 grid[r, c] = intlog2(bm) + 1
                 return true
             end
-            P[1, r] &= ~bm
-            P[2, c] &= ~bm
-            P[3, p] &= ~bm
+            @inbounds P[1, r] &= ~bm
+            @inbounds P[2, c] &= ~bm
+            @inbounds P[3, p] &= ~bm
             mask = mask2
         end
         return false

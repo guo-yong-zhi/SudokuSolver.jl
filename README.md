@@ -7,18 +7,19 @@ The `solvesudoku` function takes a 9×9 integer matrix or a string as input. In 
 using SudokuSolver
 ```
 ```julia
-print(SudokuSolver.PuzzleExamples[9])
+@show SudokuSolver.PuzzleExamples[9]
 solvesudoku(SudokuSolver.PuzzleExamples[9])
 
-[6 0 8 0 5 0 0 0 1; 
-5 0 4 9 3 0 0 0 6; 
-0 0 0 0 0 6 9 7 5; 
-7 4 9 8 2 0 0 0 3; 
-3 8 2 0 0 0 0 0 9; 
-0 0 5 0 9 0 0 0 0; 
-0 5 0 0 6 8 0 0 4; 
-8 3 0 0 0 0 0 5 7; 
-0 0 0 0 0 0 6 0 0]
+SudokuSolver.PuzzleExamples[9] = [
+    6 0 8 0 5 0 0 0 1; 
+    5 0 4 9 3 0 0 0 6; 
+    0 0 0 0 0 6 9 7 5; 
+    7 4 9 8 2 0 0 0 3; 
+    3 8 2 0 0 0 0 0 9; 
+    0 0 5 0 9 0 0 0 0; 
+    0 5 0 0 6 8 0 0 4; 
+    8 3 0 0 0 0 0 5 7; 
+    0 0 0 0 0 0 6 0 0]
 
 9×9 Matrix{Int64}:
  6  9  8  7  5  2  4  3  1
@@ -32,18 +33,19 @@ solvesudoku(SudokuSolver.PuzzleExamples[9])
  4  2  1  5  7  3  6  9  8
 ```
 ```julia
-print(SudokuSolver.PuzzleExamples[3])
+@show SudokuSolver.PuzzleExamples[3]
 solvesudoku(SudokuSolver.PuzzleExamples[3])
 
---53-----
-8------2-
--7--1-5--
-4----53--
--1--7---6
---32---8-
--6-5----9
---4----3-
------97--
+SudokuSolver.PuzzleExamples[3] = """
+    --53-----
+    8------2-
+    -7--1-5--
+    4----53--
+    -1--7---6
+    --32---8-
+    -6-5----9
+    --4----3-
+    -----97--"""
 
 9×9 Matrix{Int64}:
  1  4  5  3  2  7  6  9  8
@@ -57,11 +59,10 @@ solvesudoku(SudokuSolver.PuzzleExamples[3])
  5  2  1  8  3  9  7  6  4
 ```
 ```julia
-print(SudokuSolver.PuzzleExamples[4])
+@show SudokuSolver.PuzzleExamples[4]
 solvesudoku(SudokuSolver.PuzzleExamples[4])
 
-98.7..6..7......8...6.5....4....3..2..794..6.......4...1......3..95...7.....2.1..
-
+SudokuSolver.PuzzleExamples[4] = "98.7..6..7......8...6.5....4....3..2..794..6.......4...1......3..95...7.....2.1.."
 9×9 Matrix{Int64}:
  9  8  5  7  3  2  6  4  1
  7  3  2  1  6  4  9  8  5
@@ -74,7 +75,7 @@ solvesudoku(SudokuSolver.PuzzleExamples[4])
  5  7  4  3  2  8  1  9  6
 ```
 ## Benchmark
-A mini benchmark compared with package [Sudoku.jl](https://github.com/scheinerman/Sudoku.jl).
+A mini benchmark compared with package [Sudoku.jl](https://github.com/scheinerman/Sudoku.jl) v0.1.1.
 ```julia
 using BenchmarkTools
 using SudokuSolver
@@ -86,25 +87,25 @@ using Sudoku
     sudoku(Sudoku.puzz2)
     sudoku(Sudoku.puzz3)
 end
-38.838 ms (93863 allocations: 8.48 MiB)
+31.393 ms (93863 allocations: 8.48 MiB)
 # our SudokuSolver.jl
 @btime begin
     solvesudoku(Sudoku.puzz1)
     solvesudoku(Sudoku.puzz2)
     solvesudoku(Sudoku.puzz3)
 end
-2.252 ms (3191 allocations: 241.77 KiB)
+1.100 ms (6 allocations: 2.58 KiB)
 
 # Sudoku.jl
 @btime for puzzle in SudokuSolver.PuzzleExamples
     p = SudokuSolver.loadpuzzle(puzzle)
     sudoku(p)
 end
-5.406 s (313552 allocations: 28.31 MiB)
+2.923 s (313555 allocations: 28.31 MiB)
 # our SudokuSolver.jl
 @btime for puzzle in SudokuSolver.PuzzleExamples
     p = SudokuSolver.loadpuzzle(puzzle)
     solvesudoku(p)
 end
-245.776 ms (10722 allocations: 769.72 KiB)
+64.592 ms (80 allocations: 25.78 KiB)
 ```
