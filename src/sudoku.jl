@@ -124,6 +124,63 @@ function presortedsolver!(grid, P::Matrix{UInt16}=zeros(UInt16, 3, 9), order=ORD
 end
 
 # 优先深搜
+function possinit!(P::AbstractArray{T,3}, b::AbstractArray{W,2}) where {T,W}
+    P .= 0
+    for r in 1:9
+        for c in 1:9
+            if b[r, c] > 0
+                hold!(P, r, c, b[r, c])
+                P[r, c, :] .+= 1
+                P[r, c, b[r, c]] -= 1
+            end
+        end
+    end
+end
+function hold!(P::AbstractArray{T,3}, r, c, v) where T
+    for i in 1:c - 1
+        P[r, i, v] += 1
+    end
+    for i in c + 1:9
+        P[r, i, v] += 1
+    end
+    for i in 1:r - 1
+        P[i, c, v] += 1
+    end
+    for i in r + 1:9
+        P[i, c, v] += 1
+    end
+    rr = (r - 1) % 3 + 1
+    rc = (c - 1) % 3 + 1
+    s = ((1, 2), (-1, 1), (-2, -1))
+    for i in s[rr]        
+        for j in s[rc]
+            P[r + i, c + j, v] += 1
+        end
+    end
+end
+
+function release!(P::AbstractArray{T,3}, r, c, v) where T
+    for i in 1:c - 1
+        P[r, i, v] -= 1
+    end
+    for i in c + 1:9
+        P[r, i, v] -= 1
+    end
+    for i in 1:r - 1
+        P[i, c, v] -= 1
+    end
+    for i in r + 1:9
+        P[i, c, v] -= 1
+    end
+    rr = (r - 1) % 3 + 1
+    rc = (c - 1) % 3 + 1
+    s = ((1, 2), (-1, 1), (-2, -1))
+    for i in s[rr]        
+        for j in s[rc]
+            P[r + i, c + j, v] -= 1
+        end
+    end
+end
 mutable struct KVpair{KT,VT}
     key::KT
     value::VT
@@ -131,141 +188,122 @@ end
 Base.first(p::KVpair) = p.key
 Base.last(p::KVpair) = p.value
 
-function countzero(mask)
-    c = 0
-    while mask < 1 << 9 - 1
-        mask2 = mask | (mask+1)
-        bm = mask2 - mask
-        c += 1
-        mask = mask2
-    end
-    c
-end
-
-function idcountzero(P, id)
-    r = (id - 1) % 9 + 1
-    c = (id - 1) ÷ 9 + 1 
-    p = (r - 1) ÷ 3 * 3 + (c - 1) ÷ 3 + 1
-    countzero(P[1, r] | P[2, c] | P[3, p])
-end
-function heapinit!(P)
-    heap = tracHeap([KVpair(idcountzero(P, id), id) for id in 1:81])
+function heapinit!(P::AbstractArray{T,3}) where T
+    pocount = sum(P .== 0, dims=3)[:]
+    heap = tracHeap([KVpair(v, id) for (id, v) in enumerate(pocount)])
     buildminheap!(heap)
     return heap
 end
-function increasehold(P, H::tracHeap, r, c) 
-    id = (c - 1) * 9 + r
-    p = (r - 1) ÷ 3 * 3 + (c - 1) ÷ 3 + 1
-    lc = H.locL[id]
+function increasehold(P::AbstractArray{T,3}, H::tracHeap, r, c, v) where T
+    if P[r, c, v] == 0
+        id = (c - 1) * 9 + r
+        lc = H.locL[id]
 #         @assert last(H[lc])==id
-    if lc <= length(H)
-        oldK = first(H[lc])
-        H[lc].key = countzero(P[1, r] | P[2, c] | P[3, p])
-        heapchangekey!(H, lc, H[lc], oldK)
+        if lc <= length(H)
+            oldK = first(H[lc])
+            H[lc].key -= 1 
+            heapchangekey!(H, lc, H[lc], oldK)
+        end
+        
     end
+P[r, c, v] += 1
 end
 
-function decreasehold(P, H::tracHeap, r, c) # for release!
-    id = (c - 1) * 9 + r
-    p = (r - 1) ÷ 3 * 3 + (c - 1) ÷ 3 + 1
-    lc = H.locL[id]
+function decreasehold(P::AbstractArray{T,3}, H::tracHeap, r, c, v) where T # for release!
+    if P[r, c, v] == 1
+        id = (c - 1) * 9 + r
+        lc = H.locL[id]
 #         @assert last(H[lc])==id
-    if lc <= length(H)
+        if lc <= length(H)
 #             oldK = first(H[lc])
-        H[lc].key = countzero(P[1, r] | P[2, c] | P[3, p])
+            H[lc].key += 1 
 #             heapchangekey!(H, lc, H[lc]) #交给undo!去完成结构调整
+        end
     end
+P[r, c, v] -= 1
 end
 
-function hold!(P, r, c, H::tracHeap)
+function hold!(P::AbstractArray{T,3}, r, c, v, H::tracHeap) where T
     for i in 1:c - 1
-        increasehold(P, H, r, i)
+        increasehold(P, H, r, i, v)
     end
     for i in c + 1:9
-        increasehold(P, H, r, i)
+        increasehold(P, H, r, i, v)
     end
     for i in 1:r - 1
-        increasehold(P, H, i, c)
+        increasehold(P, H, i, c, v)
     end
     for i in r + 1:9
-        increasehold(P, H, i, c)
+        increasehold(P, H, i, c, v)
     end
     rr = (r - 1) % 3 + 1
     rc = (c - 1) % 3 + 1
     s = ((1, 2), (-1, 1), (-2, -1))
     for i in s[rr]        
         for j in s[rc]
-            increasehold(P, H, r + i, c + j)
+            increasehold(P, H, r + i, c + j, v)
         end
     end
 end
 
-function release!(P, r, c, H::tracHeap)
+function release!(P::AbstractArray{T,3}, r, c, v, H::tracHeap) where T
     for i in 1:c - 1
-        decreasehold(P, H, r, i)
+        decreasehold(P, H, r, i, v)
     end
     for i in c + 1:9
-        decreasehold(P, H, r, i)
+        decreasehold(P, H, r, i, v)
     end
     for i in 1:r - 1
-        decreasehold(P, H, i, c)
+        decreasehold(P, H, i, c, v)
     end
     for i in r + 1:9
-        decreasehold(P, H, i, c)
+        decreasehold(P, H, i, c, v)
     end
     rr = (r - 1) % 3 + 1
     rc = (c - 1) % 3 + 1
     s = ((1, 2), (-1, 1), (-2, -1))
     for i in s[rr]        
         for j in s[rc]
-            decreasehold(P, H, r + i, c + j)
+            decreasehold(P, H, r + i, c + j, v)
         end
     end
 end
-function sudokudfs!(grid::Matrix, P::Matrix{UInt16}, H::tracHeap, id=last(heapextractmin!(H)))
+function sudokudfs(P::AbstractArray{T,3}, H::tracHeap, id=last(heapextractmin!(H))) where T
     r = (id - 1) % 9 + 1
     c = (id - 1) ÷ 9 + 1 
-    p = (r - 1) ÷ 3 * 3 + (c - 1) ÷ 3 + 1
-    if id == -1
-        return true
-    end
-    if grid[r, c] == 0
-        mask = P[1, r] | P[2, c] | P[3, p]
-        while mask < 1 << 9 - 1
-            mask2 = mask | (mask+1)
-            bm = mask2 - mask
-            P[1, r] |= bm
-            P[2, c] |= bm
-            P[3, p] |= bm
-            snapshot1 = historylen(H)
-            hold!(P, r, c, H)
-            snapshot2 = historylen(H)
-            id2 = length(H) > 0 ? last(heapextractmin!(H)) : -1
-            if sudokudfs!(grid, P, H, id2)
-                grid[r, c] = intlog2(bm) + 1
+    if length(H) == 0
+        for v in 1:9
+            if P[r, c, v] == 0
                 return true
             end
-            P[1, r] &= ~bm
-            P[2, c] &= ~bm
-            P[3, p] &= ~bm
-            undo!(H, tostep=snapshot2)
-            release!(P, r, c, H)
-            undo!(H, tostep=snapshot1)
-            mask = mask2
         end
         return false
-    else
-        id2 = length(H) > 0 ? last(heapextractmin!(H)) : -1
-        return sudokudfs!(grid, P, H, id2)
     end
+    for v in 1:9
+        if P[r, c, v] == 0
+            snapshot1 = historylen(H)
+            hold!(P, r, c, v, H)
+            snapshot2 = historylen(H)
+            id = last(heapextractmin!(H))
+            if sudokudfs(P, H, id)
+#                 @show id
+                return true
+            end
+            undo!(H, tostep=snapshot2)
+            release!(P, r, c, v, H)
+            undo!(H, tostep=snapshot1)
+        end
+    end
+    return false
 end
-function prioritysolver!(grid, P::Matrix{UInt16}=zeros(UInt16, 3, 9); check=true)
-    possinit!(P, grid)
+function prioritysolver(b, P::AbstractArray{T,3}=zeros(Int, 9, 9, 9); check=true) where T
+    possinit!(P, b)
     H = heapinit!(P)
-    valid = sudokudfs!(grid, P, H)
-    return check ? (valid ? grid : nothing) : grid
+    valid = sudokudfs(P, H)
+    ans = reshape(mapslices(argmin, P, dims=3), 9, 9)
+    return check ? (valid ? ans : nothing) : ans
 end
-function solvesudoku(sudoku::Matrix{<:Integer}, args...; solver=prioritysolver!, kargs...)
+function solvesudoku(sudoku::Matrix{<:Integer}, args...; solver=prioritysolver, kargs...)
     solver(sudoku, args...; kargs...)
 end
 solvesudoku(sudoku::AbstractString, args...; kargs...) = solvesudoku(loadpuzzle(sudoku), args...; kargs...)
